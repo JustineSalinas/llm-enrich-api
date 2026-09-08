@@ -20,7 +20,7 @@ from pydantic import ValidationError
 from src.llm.client import CompletionError, complete, log_cost
 from src.llm.schema import EnrichInput, EnrichOutput
 
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"
 PROMPT_PATH = Path(__file__).resolve().parent.parent.parent / "prompts" / f"enrich-{PROMPT_VERSION}.md"
 
 LOG_DIR = Path("logs")
@@ -66,6 +66,13 @@ def _quarantine(*, input_data: dict, raw_output: str, error: str) -> None:
 
 async def run_enrich_pipeline(payload: EnrichInput) -> EnrichOutput:
     system_prompt = _load_system_prompt()
+    # Prompt-injection mitigation #1 (OWASP LLM01): title/description are
+    # untrusted content, so they go in the *user* message only, never
+    # concatenated into system_prompt, and JSON-encoded so nothing in them
+    # can break out of its own quoting and be read as a role/instruction
+    # boundary. Mitigation #2 lives in prompts/enrich-v2.md's "Handling
+    # untrusted content" section, which tells the model explicitly to treat
+    # this field's content as data even if it reads like a command.
     user_content = json.dumps(payload.model_dump(), ensure_ascii=False)
     model = os.environ["LLM_MODEL"]
 
