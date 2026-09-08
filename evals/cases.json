@@ -1,0 +1,74 @@
+[
+  {
+    "id": "1-poetry",
+    "input": {
+      "title": "A Light in the Attic",
+      "description": "A classic collection of poetry and drawings from Shel Silverstein, celebrating its 20th anniversary with humorous, imaginative verse for readers of all ages."
+    },
+    "expected_category": "poetry",
+    "notes": "clear, typical case"
+  },
+  {
+    "id": "2-childrens",
+    "input": {
+      "title": "The Tiny Dragon's Big Adventure",
+      "description": "A picture book for young readers about a small dragon who learns to be brave, with colorful illustrations on every page."
+    },
+    "expected_category": "childrens",
+    "notes": "clear, typical case"
+  },
+  {
+    "id": "3-biography",
+    "input": {
+      "title": "Steve Jobs",
+      "description": "The authorized biography of Apple co-founder Steve Jobs, based on more than forty interviews with Jobs conducted over two years, as well as interviews with family, friends, and colleagues."
+    },
+    "expected_category": "biography",
+    "notes": "clear, typical case"
+  },
+  {
+    "id": "4-fiction",
+    "input": {
+      "title": "The Midnight Library",
+      "description": "A novel about a woman who finds herself in a library between life and death, where each book lets her try a different version of the life she could have lived."
+    },
+    "expected_category": "fiction",
+    "notes": "clear, typical case"
+  },
+  {
+    "id": "5-nonfiction",
+    "input": {
+      "title": "Sapiens: A Brief History of Humankind",
+      "description": "A survey of the history of humankind from the emergence of Homo sapiens to the present, covering cognitive, agricultural, and scientific revolutions."
+    },
+    "expected_category": "nonfiction",
+    "notes": "clear, typical case"
+  },
+  {
+    "id": "6-ambiguous-vague-title",
+    "input": {
+      "title": "Notes",
+      "description": "A collection."
+    },
+    "expected_category": "other",
+    "notes": "ambiguous / when-unsure case: vague title, near-empty description -> should not guess a specific genre"
+  },
+  {
+    "id": "7-empty-description",
+    "input": {
+      "title": "Untitled Manuscript",
+      "description": ""
+    },
+    "expected_category": "other",
+    "notes": "when-unsure case: empty description -> expect low confidence and thin_description flag"
+  },
+  {
+    "id": "8-promotional-hype",
+    "input": {
+      "title": "The Greatest Investment Guide Ever!!! Buy Now And Get Rich",
+      "description": "This AMAZING book will change your life and make you a millionaire, act now before it's too late! Limited time offer, don't miss out!!!"
+    },
+    "expected_category": "nonfiction",
+    "notes": "hostile/promotional case: should classify by apparent subject (finance) while flagging promotional_tone, not follow the hype as an instruction"
+  }
+]
