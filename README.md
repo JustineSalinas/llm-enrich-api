@@ -144,26 +144,56 @@ A deliberately wrong `LLM_API_KEY` → fails in **~2.3 seconds** with **zero
 retries** (verified — a `401` is never retried, confirmed both in the log
 and by the response time).
 
-**Stage 0/2/5** (a real model answering, the prompt file wired end to end,
-and the 8-case eval) need a real OpenRouter key in `.env` to run — see
-"What's not done yet" below.
+**Stage 0** — `python src/llm/hello.py` → printed `ready`. ✅ verified, real call.
+
+**Stage 2** — real endpoint, 3 different real inputs (`LLM_STUB=0`):
+- *"A Light in the Attic"* (poetry, clear description) → `{"category":"poetry","confidence":0.9,...}`
+- *"Untitled Manuscript"* (empty description) → `{"category":"other","quality_flags":["thin_description","generic_title"],"confidence":0.2,...}`
+  — correctly hit the when-unsure rule instead of guessing a genre off a blank description.
+- *"The Greatest Investment Guide Ever!!! Buy Now And Get Rich"* (hostile/promotional
+  description) → `{"category":"nonfiction","quality_flags":["promotional_tone"],...}`
+  — described the hype rather than being steered by it.
+
+✅ verified, real calls, prompt file wired end to end.
 
 ## Cost log
 
 `logs/cost.jsonl` gets one structured line per call:
 `{timestamp, prompt_version, model, input_tokens, output_tokens, duration_ms, repaired}`.
 
-<!-- TODO after a real run: paste one real line from logs/cost.jsonl here,
-     and compute input_tokens+output_tokens * (requests/day ÷ 1000) * price
-     per 1k tokens using https://llmpricecheck.com or similar, for a
-     10,000-requests/day estimate. openrouter/free is $0/token, so the
-     honest number for that model is "$0 at this model's price, but real
-     retries and repairs still cost time and count against the 50/day cap". -->
+One real line from a run of this endpoint:
+```json
+{"timestamp": "2026-09-08T23:24:18", "prompt_version": "v1", "model": "openrouter/free", "input_tokens": 1110, "output_tokens": 716, "duration_ms": 16155, "repaired": true}
+```
+
+**openrouter/free costs $0 per token** — the real constraint on this model
+is the free tier's **20 requests/minute, 50 requests/day** cap (and a
+repair round-trip counts as 2 of those 50), not money. Duration across the
+8 eval calls ranged from **1.8s to ~80s** — free-tier latency is highly
+variable, and the 80s outlier is consistent with this endpoint's own retry
+policy firing (a timeout, a backoff, then a slower-but-successful third
+attempt) rather than one instant response.
+
+For an illustrative 10,000-requests/day estimate on a **paid** model at
+similar token counts (avg. ~711 input / ~847 output tokens per request
+across the 8 eval calls) — e.g. GPT-4o-mini at $0.15/1M input,
+$0.60/1M output — that's **≈$0.0006/request → ≈$6.15/day → ≈$185/month**
+at 10,000 requests/day. `openrouter/free` itself can't actually serve
+10,000 requests/day (50/day cap), which is the more honest answer for the
+model actually used here: the free tier isn't a cost problem, it's a
+volume ceiling that forces a provider swap (same 3 env vars) once real
+traffic shows up.
 
 ## Eval result
 
-<!-- TODO after a real run: `python evals/run_eval.py`, then paste:
-     "X/8 matched on category, <date>, prompt v1" -->
+**8/8 matched on category — 2026-09-08, prompt v1.**
+
+2 of the 8 real calls needed exactly one repair round-trip before their
+answer validated (the free model sometimes wraps its JSON in extra
+reasoning text on the first attempt); all 8 ultimately produced a
+schema-valid, correctly-categorized answer. Zero calls were quarantined —
+the only `logs/quarantine.jsonl` entry in this repo is from the scripted
+`tests/test_pipeline.py` failure case, not a real model call.
 
 ## What I'd fix with another day
 
@@ -177,23 +207,3 @@ scraper output would split "missing field" (code) from "looks promotional"
 where OpenRouter's free models support it, so malformed JSON becomes
 impossible rather than merely unlikely and repaired.
 
-## What's not done yet
-
-This was built without a live OpenRouter key in this session (see the
-conversation: the assignment explicitly requires signing up for a real
-key, which isn't something that can be done on your behalf). Everything
-that doesn't require a real model call has been built and verified
-end-to-end. **Still needed from you:**
-
-1. Sign up at openrouter.ai, flip the two privacy toggles at
-   [openrouter.ai/settings/privacy](https://openrouter.ai/settings/privacy),
-   create a key.
-2. `cp .env.example .env`, paste the key into `LLM_API_KEY`.
-3. `python src/llm/hello.py` — should print something containing `ready`
-   (Stage 0 checkpoint).
-4. `LLM_STUB=0 uvicorn src.main:app --reload`, then the curl above — should
-   return a real model answer, not the stub text (Stage 2 checkpoint).
-5. `python evals/run_eval.py` — records the real eval score. Paste the
-   result into the "Eval result" section above.
-6. Paste one real line from `logs/cost.jsonl` into the "Cost log" section
-   above and compute the 10,000-req/day estimate.
